@@ -1,36 +1,83 @@
-def greet():
-    print("Hello! I'm ChatBot.")
-    print("Type 'bye' to exit.\n")
+import nltk
+import random
+import string  # For text processing
 
-def get_user_input():
-    # Get input from the user and convert to lowercase
-    return input("You: ").lower()
+# Download necessary NLTK data (only the first time)
+nltk.download('punkt')  # Tokenizer
+nltk.download('wordnet')  # Lemmatizer
 
-def generate_response(user_input):
-    # Decide on a response based on the user's input
-    if user_input == 'bye':
-        return 'Goodbye! Have a great day!', True  # Second item indicates to exit
-    elif 'hello' in user_input or 'hi' in user_input:
-        return 'Hello there! How can I help you?', False
-    elif 'how are you' in user_input:
-        return "I'm just a bot, but I'm doing great! How about you?", False
-    elif 'what is your name' in user_input:
-        return "I'm a simple chatbot made with Python.", False
-    elif 'help' in user_input:
-        return "Sure! I can answer basic questions. Try saying hello!", False
+from nltk.stem import WordNetLemmatizer
+
+# Sample corpus for the chatbot to reply from
+corpus = """
+Hello! How can I help you?
+Hi there! I'm a chatbot.
+What is your name?
+My name is Chatty. I'm here to help you.
+How are you doing?
+I'm doing great! How can I assist you?
+What can you do?
+I can chat with you and answer basic questions.
+Goodbye!
+See you later!
+"""
+
+# Preprocessing the corpus
+sent_tokens = nltk.sent_tokenize(corpus.lower())  # converts into sentences
+
+# Create the Lemmatizer
+lemmatizer = WordNetLemmatizer()
+
+# Function to Lemmatize and normalize text
+def LemNormalize(text):
+    remove_punct_dict = dict((ord(punct), None) for punct in string.punctuation)
+    return [lemmatizer.lemmatize(token) for token in nltk.word_tokenize(text.lower().translate(remove_punct_dict))]
+
+# Greeting inputs and responses
+GREETING_INPUTS = ("hello", "hi", "greetings", "sup", "what's up", "hey",)
+GREETING_RESPONSES = ["hi", "hey", "hello", "I am glad you're talking to me!"]
+
+# Function to check greetings
+def greeting(sentence):
+    for word in sentence.split():
+        if word.lower() in GREETING_INPUTS:
+            return random.choice(GREETING_RESPONSES)
+
+# Generate a response using similarity (basic)
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+def response(user_response):
+    robo_response = ''
+    sent_tokens.append(user_response.lower())  # add user input to sentence tokens
+    TfidfVec = TfidfVectorizer(tokenizer=LemNormalize, stop_words='english')
+    tfidf = TfidfVec.fit_transform(sent_tokens)
+    vals = cosine_similarity(tfidf[-1], tfidf)
+    idx = vals.argsort()[0][-2]
+    
+    flat = vals.flatten()
+    flat.sort()
+    req_tfidf = flat[-2]
+    
+    if req_tfidf == 0:
+        robo_response = "I'm sorry! I don't understand you."
     else:
-        return "I'm not sure how to respond to that. Try asking something else!", False
+        robo_response = sent_tokens[idx]
+    
+    sent_tokens.pop()  # remove user input from sentence tokens
+    return robo_response
 
-def chatbot():
-    greet()
+# Chat loop
+print("Chatty: Hi! I'm Chatty. Type 'bye' to exit.")
 
-    while True:
-        user_input = get_user_input()
-        response, should_exit = generate_response(user_input)
-        print("ChatBot:", response)
-
-        if should_exit:
+while True:
+    user_response = input().lower()
+    if user_response != 'bye':
+        if user_response in ['thanks', 'thank you']:
+            print("Chatty: You're welcome!")
             break
-
-# Run the chatbot
-chatbot()
+        else:
+            if greeting(user_response) is not None:
+                print("Chatty:", greeting(user_response))
+            else:
+                print("Chatty:", response(user_r
